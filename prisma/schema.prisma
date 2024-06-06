@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,22 +8,24 @@ datasource db {
 }
 
 model Category {
-  id   Int    @id @default(autoincrement())
-  name String
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[]
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   name        String
   price       Float
   description String
   categoryId  Int
+  category    Category           @relation(fields: [categoryId], references: [id])
   attributes  ProductAttribute[]
 }
 
 model Attribute {
-  id   Int    @id @default(autoincrement())
-  name String
+  id                Int                @id @default(autoincrement())
+  name              String
   productAttributes ProductAttribute[]
 }
 
@@ -38,5 +39,3 @@ model ProductAttribute {
 
   @@unique([productId, attributeId])
 }
-
-

@@ -1,6 +1,6 @@
 // app/Navbar.tsx
 import Link from 'next/link';
-
+import "../app/globals.css";
 const Menu = () => {
   return (
     <nav className="bg-gray-800 p-4">

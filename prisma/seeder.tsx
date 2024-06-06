@@ -1,45 +1,72 @@
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  // Adaugă categorii de test
-  const category1 = await prisma.category.create({
-    data: { name: 'Electronics' },
-  });
-  const category2 = await prisma.category.create({
-    data: { name: 'Clothing' },
-  });
 
-  // Adaugă atribute de test
-  const sizeAttribute = await prisma.attribute.create({
-    data: { name: 'Size' },
-  });
-  const colorAttribute = await prisma.attribute.create({
-    data: { name: 'Color' },
-  });
-  const saleAttribute = await prisma.attribute.create({
-    data: { name: 'Sale' },
-  });
-
-  // Adaugă produse de test
-  const product = await prisma.product.create({
-    data: {
-      name: 'T-Shirt',
-      price: 19.99,
-      description: 'A comfortable cotton t-shirt',
-      categoryId: category2.id,
-    },
-  });
-
-  // Adaugă atribute pentru produs
-  await prisma.productAttribute.createMany({
+  await prisma.category.createMany({
     data: [
-      { productId: product.id, attributeId: sizeAttribute.id, value: 'L' },
-      { productId: product.id, attributeId: colorAttribute.id, value: 'blue' },
-      { productId: product.id, attributeId: saleAttribute.id, value: 'yes' },
+      { name: 'Electronics' },
+      { name: 'Clothing' },
+      { name: 'Books' }
     ],
+    skipDuplicates: true
   });
+
+  // Create attributes
+  await prisma.attribute.createMany({
+    data: [
+      { name: 'Size' },
+      { name: 'Color' },
+      { name: 'Weight' }
+    ],
+    skipDuplicates: true
+  });
+
+
+  const product1 = await prisma.product.create({
+    data: {
+      name: 'Smartphone',
+      price: 999.99,
+      description: 'A high-end smartphone with great features',
+      categoryId: 1,
+      attributes: {
+        create: [
+          { attributeId: 2, value: 'Black' },
+        ]
+      }
+    }
+  });
+
+  const product2 = await prisma.product.create({
+    data: {
+      name: 'Jeans',
+      price: 49.99,
+      description: 'Comfortable and stylish jeans',
+      categoryId: 2,
+      attributes: {
+        create: [
+          { attributeId: 1, value: '32' },
+          { attributeId: 2, value: 'Blue' }
+        ]
+      }
+    }
+  });
+
+  const product3 = await prisma.product.create({
+    data: {
+      name: 'Programming Book',
+      price: 39.99,
+      description: 'Learn programming with this detailed book',
+      categoryId: 3,
+      attributes: {
+        create: [
+          { attributeId: 3, value: '500g' }
+        ]
+      }
+    }
+  });
+
+  console.log("Data has been seeded.");
 }
 
 main()

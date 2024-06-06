@@ -19,15 +19,35 @@
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+          to bottom,
+          transparent,
+          rgb(var(--background-end-rgb))
+  )
+  rgb(var(--background-start-rgb));
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .custom-table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+
+  .custom-thead {
+    @apply bg-gray-50;
+  }
+
+  .custom-th {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+  }
+
+  .custom-tbody {
+    @apply bg-white divide-y divide-gray-200;
+  }
+
+  .custom-td {
+    @apply px-6 py-4 whitespace-nowrap;
   }
 }
