@@ -10,8 +10,7 @@ export default async function handler(
   switch (req.method) {
     case 'GET':
       try {
-        const { search, sort, order, priceFrom, priceTo, categoryId } = req.query;
-
+        const { search, sort, order, priceFrom, priceTo, categoryId, attributeNames } = req.query;
         let sortOptions;
         if (sort && order) {
           sortOptions = { [sort as string]: order as string };
@@ -19,6 +18,7 @@ export default async function handler(
 
         let searchOptions: any = {};
         if (search) {
+
           const searchTerm = search.toString().toLowerCase();
           searchOptions.name = {
             contains: searchTerm,
@@ -36,7 +36,27 @@ export default async function handler(
         }
 
         if (categoryId) {
+
           searchOptions.categoryId = parseInt(categoryId as string);
+        }
+
+        if (attributeNames) {
+          const attributeNamesArray = attributeNames.split(',');
+
+          const attributeConditions = attributeNamesArray.map(name => ({
+            attributes: {
+              some: {
+                attribute: {
+                  name: name
+                }
+              }
+            }
+          }));
+
+          searchOptions = {
+            ...searchOptions,
+            AND: attributeConditions,
+          };
         }
 
         const products = await prisma.product.findMany({
@@ -65,6 +85,7 @@ export default async function handler(
         res.status(500).json({ error: "Failed to fetch products" });
       }
       break;
+
     case 'POST':
       try {
         const { name, price, description, categoryId, attributes } = req.body;
@@ -130,9 +151,7 @@ export default async function handler(
           });
         });
 
-
         await prisma.$transaction([productUpdatePromise, newAttributesPromise, ...existingAttributesPromises]);
-
 
         const updatedProduct = await prisma.product.findUnique({
           where: { id: parseInt(id) },

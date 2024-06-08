@@ -12,7 +12,7 @@ async function main() {
     skipDuplicates: true
   });
 
-  // Create attributes
+
   await prisma.attribute.createMany({
     data: [
       { name: 'Size' },

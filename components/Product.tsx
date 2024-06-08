@@ -39,6 +39,9 @@ const ProductTable: React.FC = () => {
   const [productPrice, setProductPrice] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productCategory, setProductCategory] = useState('');
+  const [availableAttributes, setAvailableAttributes] = useState<string[]>([]);
+  const [selectedAttributes, setSelectedAttributes] = useState([]);
+  const [showAttributes, setShowAttributes] = useState(false);
 
   useEffect(() => {
     if (editingProduct) {
@@ -50,9 +53,13 @@ const ProductTable: React.FC = () => {
     }
   }, [editingProduct]);
 
-  const handleAttributeChange = (index: number, field: 'name' | 'value', value: string) => {
+  const handleAttributeChange = (index, field, value) => {
     const updatedAttributes = attributes.map((attr, idx) => {
       if (idx === index) {
+        if (field === 'id') {
+          const attributeDetails = availableAttributes.find(attr => attr.id.toString() === value);
+          return { ...attr, id: parseInt(value), name: attributeDetails?.name };
+        }
         return { ...attr, [field]: value };
       }
       return attr;
@@ -60,13 +67,9 @@ const ProductTable: React.FC = () => {
     setAttributes(updatedAttributes);
   };
 
-
-
   const addAttributeField = () => {
-    const defaultAttributeId = 1;
-    setAttributes([...attributes, { attributeId: defaultAttributeId, name: '', value: '' }]);
+    setAttributes([...attributes, { id: undefined, name: '', value: '' }]);
   };
-
 
   const removeAttributeField = (index: number) => {
     setAttributes(attributes.filter((_, idx) => idx !== index));
@@ -74,16 +77,36 @@ const ProductTable: React.FC = () => {
 
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
+
+    const updatedAttributes = await Promise.all(attributes.map(async attribute => {
+      if (!attribute.id) {
+        const response = await fetch('/api/attributes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: attribute.name })
+        });
+        const newAttribute = await response.json();
+        return { ...attribute, id: newAttribute.id };
+      }
+      return attribute;
+    }));
+
     const productData = {
       name: productName,
       price: parseFloat(productPrice),
       categoryId: parseInt(productCategory),
       description: productDescription,
-      attributes: attributes
+      attributes: updatedAttributes.map(attr => ({
+        attributeId: attr.id,
+        value: attr.value
+      }))
     };
 
-    const response = await fetch(editingProduct ? `/api/products/${editingProduct.id}` : '/api/products', {
-      method: editingProduct ? 'PUT' : 'POST',
+    const endpoint = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products';
+    const method = editingProduct ? 'PUT' : 'POST';
+
+    const response = await fetch(endpoint, {
+      method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData),
     });
@@ -91,14 +114,19 @@ const ProductTable: React.FC = () => {
     if (response.ok) {
       const updatedProduct = await response.json();
       setProducts(prevProducts => {
-        return prevProducts.map(product =>
-          product.id === updatedProduct.id ? { ...product, ...updatedProduct } : product);
-      });
+        const newProducts = editingProduct
+          ? prevProducts.map(product =>
+            product.id === updatedProduct.id ? { ...product, ...updatedProduct } : product
+          )
+          : [...prevProducts, updatedProduct];
 
+        return newProducts;
+      });
       setShowModal(false);
+      setEditingProduct(null);
     } else {
       const errorResponse = await response.json();
-      console.error('Failed to update product:', errorResponse);
+      console.error('Failed to update or add product:', errorResponse);
     }
   };
 
@@ -119,7 +147,8 @@ const ProductTable: React.FC = () => {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const response = await fetch(`/api/products?search=${search}&sort=${sort}&order=${order}&priceFrom=${priceFrom}&priceTo=${priceTo}&categoryId=${selectedCategory}`);
+        const attributeNames = selectedAttributes.join(',');
+        const response = await fetch(`/api/products?search=${search}&sort=${sort}&order=${order}&priceFrom=${priceFrom}&priceTo=${priceTo}&categoryId=${selectedCategory}&attributeNames=${attributeNames}`);
         const data = await response.json();
         setProducts(data);
       } catch (error) {
@@ -128,7 +157,7 @@ const ProductTable: React.FC = () => {
     }
 
     fetchProducts();
-  }, [search, sort, order, priceFrom, priceTo, selectedCategory]);
+  }, [search, sort, order, priceFrom, priceTo, selectedCategory, selectedAttributes]);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -143,6 +172,31 @@ const ProductTable: React.FC = () => {
 
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const fetchAttributes = async () => {
+      try {
+        const response = await fetch('/api/attributes');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableAttributes(data);
+        } else {
+          throw new Error('Failed to fetch attributes');
+        }
+      } catch (error) {
+        console.error('Error fetching attributes:', error);
+      }
+    };
+
+    fetchAttributes();
+  }, []);
+
+  const toggleAttribute = attr => {
+    const newSelectedAttributes = selectedAttributes.includes(attr)
+      ? selectedAttributes.filter(item => item !== attr)
+      : [...selectedAttributes, attr];
+    setSelectedAttributes(newSelectedAttributes);
+  };
 
   return (
     <div className="w-full min-h-screen bg-gray-100">
@@ -176,7 +230,6 @@ const ProductTable: React.FC = () => {
         </select>
       </div>
 
-
       <div className="flex items-center space-x-4 bg-white pt-2 pl-2 shadow rounded-lg">
         <div className="flex items-center">
           <label className="mr-2 text-sm font-medium text-gray-700">Price From:</label>
@@ -200,7 +253,6 @@ const ProductTable: React.FC = () => {
         </div>
       </div>
 
-
       <div className="flex items-center space-x-2 bg-white pt-2 pl-2 pb-2 shadow rounded-lg">
         <label className="text-sm font-medium text-gray-700">Category:</label>
         <select
@@ -215,11 +267,36 @@ const ProductTable: React.FC = () => {
       </div>
 
       <button onClick={() => {
-          setEditingProduct(null);
-          setShowModal(true);
-        }} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded pl-2">
-          New Product
+        setEditingProduct(null);
+        setShowModal(true);
+      }} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded pl-2">
+        New Product
+      </button>
+
+      <div className="flex flex-col space-y-4 pt-2 text-black">
+        <button
+          onClick={() => setShowAttributes(!showAttributes)}
+          className=" py-2 bg-blue-500 text-white font-bold rounded hover:bg-blue-600 w-32"
+        >
+          {showAttributes ? 'Hide Attributes' : 'Show Attributes'}
         </button>
+
+        {showAttributes && (
+          <div className="flex flex-col mt-4">
+            {availableAttributes.map(attr => (
+              <label key={attr.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedAttributes.includes(attr.name)}
+                  onChange={() => toggleAttribute(attr.name)}
+                  className="form-checkbox h-5 w-5 text-blue-500"
+                />
+                <span className="text-lg">{attr.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
 
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
@@ -277,7 +354,7 @@ const ProductTable: React.FC = () => {
                         <input
                           name="name"
                           type="text"
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
                           value={productName}
                           onChange={(e) => setProductName(e.target.value)}
                           required
@@ -287,8 +364,10 @@ const ProductTable: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700">Price</label>
                         <input
                           name="price"
-                          type="number"
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          type="text"
+                          pattern="\d+(\,\d{2})?"
+                          title="Please enter a valid price (e.g., 100,99)"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
                           value={productPrice}
                           onChange={(e) => setProductPrice(e.target.value)}
                           required
@@ -298,7 +377,7 @@ const ProductTable: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700">Category</label>
                         <select
                           name="category"
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
                           value={productCategory}
                           onChange={(e) => setProductCategory(e.target.value)}
                           required
@@ -312,33 +391,31 @@ const ProductTable: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700">Description</label>
                         <textarea
                           name="description"
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
                           value={productDescription}
                           onChange={(e) => setProductDescription(e.target.value)}
                         ></textarea>
                       </div>
                       {editingProduct && (
                         <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700">Attributes</label>
+                          <label className="block text-sm font-medium text-gray-700 text-black">Attributes</label>
                           {attributes.map((attribute, index) => (
                             <div key={attribute.id || index} className="flex items-center mb-2">
                               <select
-                                value={attribute.name}
-                                onChange={(e) => handleAttributeChange(index, 'name', e.target.value)}
-                                className="border p-2 mr-2"
+                                value={attribute.id}
+                                onChange={(e) => handleAttributeChange(index, 'id', e.target.value)}
+                                className="border p-2 mr-2 text-black"
                               >
-                                <option value="">Select Attribute</option>
-                                <option value="Size">Size</option>
-                                <option value="Color">Color</option>
-                                <option value="Sale">Sale</option>
-
+                                {availableAttributes.map(attr => (
+                                  <option key={attr.id} value={attr.id}>{attr.name}</option>
+                                ))}
                               </select>
                               <input
                                 type="text"
                                 value={attribute.value}
                                 onChange={(e) => handleAttributeChange(index, 'value', e.target.value)}
                                 placeholder="Attribute Value"
-                                className="border p-2 mr-2"
+                                className="border p-2 mr-2 text-black"
                               />
                               <button onClick={() => removeAttributeField(index)} className="bg-red-500 text-white p-2 rounded">
                                 Remove
@@ -346,7 +423,10 @@ const ProductTable: React.FC = () => {
                             </div>
                           ))}
 
-                          <button type="button" onClick={addAttributeField} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded">Add Attribute</button>
+                          <button type="button" onClick={addAttributeField} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded">
+                            Add Attribute
+                          </button>
+
                         </div>
                       )}
                       <div className="mt-4 flex justify-end">
