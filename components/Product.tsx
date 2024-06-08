@@ -74,6 +74,19 @@ const ProductTable: React.FC = () => {
   const removeAttributeField = (index: number) => {
     setAttributes(attributes.filter((_, idx) => idx !== index));
   };
+  useEffect(() => {
+    // O funcție pentru a reîncărca produsele de la server
+    async function fetchProducts() {
+      const response = await fetch('/api/products');
+      if (response.ok) {
+        const products = await response.json();
+        setProducts(products);
+      }
+    }
+
+    fetchProducts();
+
+  }, []);
 
   const handleSubmitProduct = async (e) => {
     e.preventDefault();
@@ -124,13 +137,23 @@ const ProductTable: React.FC = () => {
       });
       setShowModal(false);
       setEditingProduct(null);
+
     } else {
       const errorResponse = await response.json();
       console.error('Failed to update or add product:', errorResponse);
     }
   };
 
-  const openEditModal = (product: Product) => {
+  const openEditModal = (product) => {
+    setProductName(product.name);
+    setProductPrice(product.price.toString());
+    setProductDescription(product.description);
+    setProductCategory(product.category.id.toString());
+    setAttributes(product.attributes.map(attr => ({
+      ...attr,
+      id: attr.id,
+      name: availableAttributes.find(a => a.id === attr.id)?.name || attr.name
+    })));
     setEditingProduct(product);
     setShowModal(true);
   };
@@ -382,10 +405,12 @@ const ProductTable: React.FC = () => {
                           onChange={(e) => setProductCategory(e.target.value)}
                           required
                         >
+                          <option value="" disabled selected>Choose category</option>
                           {categories.map(category => (
                             <option key={category.id} value={category.id}>{category.name}</option>
                           ))}
                         </select>
+
                       </div>
                       <div className="mt-4">
                         <label className="block text-sm font-medium text-gray-700">Description</label>
@@ -406,7 +431,10 @@ const ProductTable: React.FC = () => {
                                 onChange={(e) => handleAttributeChange(index, 'id', e.target.value)}
                                 className="border p-2 mr-2 text-black"
                               >
+                                <option value="" disabled selected>Choose category</option>
+
                                 {availableAttributes.map(attr => (
+
                                   <option key={attr.id} value={attr.id}>{attr.name}</option>
                                 ))}
                               </select>
