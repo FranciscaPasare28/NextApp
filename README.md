@@ -49,5 +49,6 @@ npm run dev
 ```
 
 Live Demo:
-<iframe width="560" height="315" src="https://www.youtube.com/embed/09vukVdpr6Y" style="border: 1px solid #cccccc; border-radius: 5px;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+[![Numele Videoclipului]()](https://youtu.be/09vukVdpr6Y)
+
 
