@@ -49,9 +49,21 @@ const ProductTable: React.FC = () => {
       setProductPrice(editingProduct.price.toString());
       setProductDescription(editingProduct.description);
       setProductCategory(editingProduct.category.id.toString());
-      setAttributes([...editingProduct.attributes]);
+      console.log(editingProduct);
+      if (editingProduct && availableAttributes.length > 0) {
+        const updatedAttributes = editingProduct.attributes.map(attr => {
+          const foundAttribute = availableAttributes.find(a => a.id === attr.attributeId);
+          return {
+            ...attr,
+            id: attr.attributeId,
+            name: foundAttribute ? foundAttribute.name : 'Unknown'
+          };
+        });
+
+        setAttributes(updatedAttributes);
+      }
     }
-  }, [editingProduct]);
+    }, [editingProduct, availableAttributes]);
 
   const handleAttributeChange = (index, field, value) => {
     const updatedAttributes = attributes.map((attr, idx) => {
@@ -68,14 +80,13 @@ const ProductTable: React.FC = () => {
   };
 
   const addAttributeField = () => {
-    setAttributes([...attributes, { id: undefined, name: '', value: '' }]);
+    setAttributes([...attributes, { id: Date.now(), name: '', value: '' }]);
   };
 
   const removeAttributeField = (index: number) => {
     setAttributes(attributes.filter((_, idx) => idx !== index));
   };
   useEffect(() => {
-    // O funcție pentru a reîncărca produsele de la server
     async function fetchProducts() {
       const response = await fetch('/api/products');
       if (response.ok) {
@@ -126,6 +137,7 @@ const ProductTable: React.FC = () => {
 
     if (response.ok) {
       const updatedProduct = await response.json();
+      console.log('Updated Product:', updatedProduct);
       setProducts(prevProducts => {
         const newProducts = editingProduct
           ? prevProducts.map(product =>
@@ -151,6 +163,7 @@ const ProductTable: React.FC = () => {
     setProductCategory(product.category.id.toString());
     setAttributes(product.attributes.map(attr => ({
       ...attr,
+
       id: attr.id,
       name: availableAttributes.find(a => a.id === attr.id)?.name || attr.name
     })));
