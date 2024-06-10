@@ -49,5 +49,5 @@ npm run dev
 ```
 
 Live Demo:
-<iframe width="300" height="169" src="https://www.youtube.com/embed/09vukVdpr6Y" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/09vukVdpr6Y" style="border: 1px solid #cccccc; border-radius: 5px;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
