@@ -49,6 +49,6 @@ npm run dev
 ```
 
 Live Demo:
-[![Numele Videoclipului]()](https://youtu.be/09vukVdpr6Y)
+https://youtu.be/09vukVdpr6Y
 
 
